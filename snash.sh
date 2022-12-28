@@ -139,7 +139,7 @@ update_pos() { # $1 = user input
     old_y=$(pos_to_y "$old_pos")
 	new_x=$(pos_to_x "$POS")
     new_y=$(pos_to_y "$POS")
-	if (($new_y < 2)) || (($new_y > ($Y_MAX + 1))) || (! ((old_y == new_y)) && ! ((old_x == new_x))) ; then #TODO
+	if (($new_y < 2)) || (($new_y > ($Y_MAX + 1))) || (! ((old_y == new_y)) && ! ((old_x == new_x))) ; then
 		stop_game "Game Over (hit wall)"; fi
 }
 # updates apple spawning & despawning
