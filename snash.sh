@@ -27,7 +27,6 @@ APP="" # apple position
 ACN=0 # apple existing counter
 SCORE=0 # game score
 # colors
-RED='\033[0;31m'
 GRN='\033[0;32m'
 BLU='\033[0;34m'
 YLW='\033[0;33m'
@@ -37,8 +36,6 @@ NOO="."
 APL="O"
 # additional files needed
 THIS_DIR=$(dirname "$0")
-F_STARTFRAMES="$THIS_DIR/resources/.startupframes"
-F_HELPTEXT="$THIS_DIR/resources/.helptext"
 F_SCORES="$THIS_DIR/.scores"
 # fifo array for positions
 declare -a FIFO
@@ -47,7 +44,26 @@ declare -a FIFO
 ##### ARGUMENT PARSING
 case $1 in
 -h|--help)
-	cat $F_HELPTEXT
+	echo "
+                SNASH
+            snake in bash
+          (simple  version)
+
+           # Snash rules #
+          goal: high score
+apples: eat apples to raise your score
+    but be careful, they can rot
+       and result minus points
+control: change direction with w,a,s,d
+  death: eating yourself, or a wall
+
+Define difficulty: (default = Medium)
+
+Default: $0 -d <number >= 0>
+Easy:    $0 -easy
+Medium:  $0 -medium
+Hard:    $0 -hard
+"
     exit 0
 ;;
 -s|--scores)
@@ -193,17 +209,10 @@ update_player() {
 	# pop tail
 	tail_pos=${FIFO[0]}
 	FIFO=("${FIFO[@]:1}")
-	draw $tail_pos "${RED}${NOO}"
+	draw $tail_pos "${NOO}"
 }
 # startup sequence
 startup() {
-	# draw fancy start screen stuff
-	for i in {00..64}
-	do
-		grep -A 5 "$i" $F_STARTFRAMES
-		sleep .02
-		printf "\033[6A"
-	done
 	# create player
 	for i in $(seq 1 $INIT_SIZE)
 	do
