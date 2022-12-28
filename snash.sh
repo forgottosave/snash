@@ -50,7 +50,7 @@ case $1 in
 	cat $F_HELPTEXT
     exit 0
 ;;
--h|--scores)
+-s|--scores)
 	cat .scores
 	exit 0
 ;;
