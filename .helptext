@@ -1,0 +1,18 @@
+                SNASH
+            snake in bash
+
+           # Snash rules #
+          goal: high score
+apples: eat apples to raise your score
+    but be careful, they can rot
+       and result minus points
+control: change direction with w,a,s,d
+  death: eating yourself, or a wall
+
+Define difficulty: (default = Medium)
+
+Default: $0 -d <number >= 0>
+Easy:    $0 -easy
+Medium:  $0 -medium
+Hard:    $0 -hard
+
