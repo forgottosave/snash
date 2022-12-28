@@ -1,3 +1,14 @@
+#
+# Snash
+#
+# Snake in bash, main file
+#
+# @author Timon Ole Ensel
+# https://github.com/forgottosave/snash
+#
+# @license MIT
+#
+
 #!/bin/bash
 
 ##### GLOBAL VARs
@@ -26,7 +37,8 @@ NOO="."
 APL="O"
 # additional files needed
 THIS_DIR=$(dirname "$0")
-F_STARTFRAMES="$THIS_DIR/.startupframes"
+F_STARTFRAMES="$THIS_DIR/resources/.startupframes"
+F_HELPTEXT="$THIS_DIR/resources/.helptext"
 F_SCORES="$THIS_DIR/.scores"
 # fifo array for positions
 declare -a FIFO
@@ -35,7 +47,7 @@ declare -a FIFO
 ##### ARGUMENT PARSING
 case $1 in
 -h|--help)
-	cat .helptext
+	cat $F_HELPTEXT
     exit 0
 ;;
 -h|--scores)
