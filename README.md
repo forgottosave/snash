@@ -3,7 +3,7 @@
 
 ## What is **snash**
 *Snash* is my recreation of the popular game *snake*, but using only the programming language *bash*, that you can run in your linux command line.
-This project helped me get started with a bit more advanced bash, which is probably the reason why this may not be the most beautiful bash code style you've ever seen :) But it works completely fine :D
+This project helped me get started with a bit more advanced bash in 2022, which is probably the reason why this might not be the most beautiful bash code style you've ever seen, but it works completely fine :) It also was a lot of fun to use to set up my first own git-project with license and everthing. Hello Open Source :D
 
 ## Install and Run
 1. Make sure to download all the files, including the resource folder. The easiest way is just to clone this repository:
@@ -28,4 +28,5 @@ You find the general information when adding the flag `-h` when executing the pr
   - Have fun!
 
 **Control**
-  - Change direction with w,a,s,d
+  - During game: Change direction with w,a,s,d
+  - Before game: Change difficulty with the option `-d <number>`, where number can be any positive value (although 1-10 is recommended). Not providing the difficulty sets it to the default (5).
