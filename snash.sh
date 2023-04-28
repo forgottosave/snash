@@ -121,13 +121,13 @@ player_dead() {
 update_pos() { # $1 = user input
 	old_pos=$POS
 	case $DIR in
-	w|W)
+	w|W|k|K)
 		POS=$(($POS + $X_MAX));;
-	a|A)
+	a|A|h|H)
         POS=$(($POS - 1));;
-	s|S)
+	s|S|j|J)
         POS=$(($POS - $X_MAX));;
-	d|D)
+	d|D|l|L)
         POS=$(($POS + 1));;
 	*)
 		printf "\033[1A\033[K"

@@ -28,5 +28,5 @@ You find the general information when adding the flag `-h` when executing the pr
   - Have fun!
 
 **Control**
-  - During game: Change direction with w,a,s,d
+  - During game: Change direction with w,a,s,d (or vim-h,j,k,l)
   - Before game: Change difficulty with the option `-d <number>`, where number can be any positive value (although 1-10 is recommended). Not providing the difficulty sets it to the default (5).
