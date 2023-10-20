@@ -140,7 +140,8 @@ update_pos() { # $1 = user input
 	new_x=$(pos_to_x "$POS")
     new_y=$(pos_to_y "$POS")
 	if (($new_y < 2)) || (($new_y > ($Y_MAX + 1))) || (! ((old_y == new_y)) && ! ((old_x == new_x))) ; then
-		stop_game "Game Over (hit wall)"; fi
+		stop_game "Game Over (hit wall)"
+	fi
 }
 # updates apple spawning & despawning
 update_apple() { # $1=current_frame
@@ -151,18 +152,22 @@ update_apple() { # $1=current_frame
 		draw $APP "${NOO}"
 		APP=""
 		SCORE=$(($SCORE + $APL_MINUS))
-	else
 	# yellow apple if close to delete
-	if (($ACN > 80)) && ! [[ $APP == "" ]]; then
-		draw $APP "${YLW}${APL}"; fi
+	elif (($ACN > 80)) && ! [[ $APP == "" ]]; then
+		draw $APP "${YLW}${APL}"
 	fi
 	# only spawn every 20th frame and if no other exists
 	if (($1 % 20)) || ! [[ $APP == "" ]]; then
-		return; fi
+		return
+	fi
 	# spawn apple
 	ACN=0
 	APP=$((($RANDOM % ($X_MAX * $Y_MAX)) + $X_MAX + 1))
-	[[ " ${FIFO[*]} " =~ " ${APP} " ]] && APP="" || draw $APP "${GRN}${APL}"
+	if [[ " ${FIFO[*]} " =~ " ${APP} " ]]; then
+		APP=""
+	else
+		draw $APP "${GRN}${APL}"
+	fi
 	#draw $APP "${GRN}${APL}"
 }
 # player position
@@ -198,15 +203,13 @@ update_player() {
 # startup sequence
 startup() {
 	# draw fancy start screen stuff
-	for i in {00..64}
-	do
+	for i in {00..64}; do
 		grep -A 5 "$i" $F_STARTFRAMES
 		sleep .02
 		printf "\033[6A"
 	done
 	# create player
-	for i in $(seq 1 $INIT_SIZE)
-	do
+	for i in $(seq 1 $INIT_SIZE); do
 	    FIFO+=("$POS")
 	done
 	# start
@@ -215,11 +218,9 @@ startup() {
 	printf "\033[1D\033[1A"
     DIR='w'
 	# draw gamepanel & start
-	for row in $(seq 0 $Y_MAX)
-	do
+	for row in $(seq 0 $Y_MAX); do
     	line=""
-    	for col in $(seq 0 $(($X_MAX - 2)))
-    	do
+    	for col in $(seq 0 $(($X_MAX - 2))); do
     	    line="${line}${NOO}"
     	done
     	echo " ${line} "
@@ -235,14 +236,17 @@ loadframe() {
 	# frame
     printf "\033[s"
     update_pos
-    if player_dead; then
-         [[ ! $DIR == "" ]] && return 0; fi
+    if player_dead && [[ ! $DIR == "" ]]; then
+         return 0
+	fi
     update_player
     update_apple "$var"
     printf "\033[u"
     # catch user input
     read -n 1 -s -t .02 input
-    [[ $? -gt 128 ]] && return 1
+    if [[ $? -gt 128 ]]; then
+		return 1
+	fi
     DIR="$input";
 	return 1
 }
