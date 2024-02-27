@@ -54,6 +54,11 @@ case $1 in
 	cat .scores
 	exit 0
 ;;
+-f|--fullscreen)
+	Y_MAX=$(($(tput lines) - 2)) #16
+	X_MAX=$(($(tput cols)  - 1)) #32
+	POS=$(($Y_MAX / 2 * $X_MAX + $X_MAX / 2))
+;;
 -easy)
 	MODE='EASY   (0) '
     SPF=200
