@@ -25,6 +25,7 @@ DIR="" # player direction
 POS=$(($Y_MAX / 2 * $X_MAX + $X_MAX / 2))
 APP="" # apple position
 ACN=0 # apple existing counter
+ARR=1 # apple respawn rate (value>=1, 1=highest)
 SCORE=0 # game score
 # colors
 RED='\033[0;31m'
@@ -162,7 +163,8 @@ update_apple() { # $1=current_frame
 		draw $APP "${YLW}${APL}"
 	fi
 	# only spawn every 20th frame and if no other exists
-	if (($1 % 20)) || ! [[ $APP == "" ]]; then
+	#if (($1 % 20)) || ! [[ $APP == "" ]]; then
+	if (($1 % $ARR)) || ! [[ $APP == "" ]]; then
 		return
 	fi
 	# spawn apple
