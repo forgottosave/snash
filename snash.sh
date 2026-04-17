@@ -29,6 +29,7 @@ ACN=0 # apple existing counter
 ARR=1 # apple respawn rate (value>=1, 1=highest)
 SCORE=0 # game score
 KILL_COUNT=0 # number of enemies killed
+EN_UPDATE_CTR=0 # enemy update counter (alternates 0,1)
 EN_POS="" # enemy head position
 EN_DIR="" # enemy current movement direction
 EN_TARGET_SIZE=3 # enemy current target length
@@ -277,7 +278,7 @@ update_enemy() {
 			for d in "${safe_not_player[@]}"; do
 				if [[ "$d" == "$EN_DIR" ]]; then
 					# Add extra weight to keep moving straight when safe.
-					pool+=("$d" "$d" "$d")
+					pool+=("$d" "$d" "$d" "$d" "$d")
 					break
 				fi
 			done
@@ -288,7 +289,7 @@ update_enemy() {
 		if [[ -n "$EN_DIR" ]]; then
 			for d in "${safe_dirs[@]}"; do
 				if [[ "$d" == "$EN_DIR" ]]; then
-					pool+=("$d" "$d" "$d")
+					pool+=("$d" "$d" "$d" "$d" "$d")
 					break
 				fi
 			done
@@ -455,7 +456,8 @@ loadframe() {
          return 0
 	fi
     update_player
-	update_enemy
+	EN_UPDATE_CTR=$(( (EN_UPDATE_CTR + 1) % 2 ))
+	[[ $EN_UPDATE_CTR -eq 0 ]] && update_enemy
     update_apple "$var"
     printf "\033[u"
     # catch user input
