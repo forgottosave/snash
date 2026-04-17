@@ -28,6 +28,12 @@ APP="" # apple position
 ACN=0 # apple existing counter
 ARR=1 # apple respawn rate (value>=1, 1=highest)
 SCORE=0 # game score
+KILL_COUNT=0 # number of enemies killed
+EN_POS="" # enemy head position
+EN_DIR="" # enemy current movement direction
+EN_TARGET_SIZE=3 # enemy current target length
+EN_GROWTH_SEC=15 # enemy grows by one every N seconds
+EN_LAST_GROW_TS=0 # last enemy growth unix timestamp
 # colors
 RED='\033[0;31m'
 GRN='\033[0;32m'
@@ -35,6 +41,7 @@ BLU='\033[0;34m'
 YLW='\033[0;33m'
 # characters
 PLR="#"
+ENM="&"
 NOO="."
 APL="O"
 # additional files needed
@@ -44,6 +51,7 @@ F_HELPTEXT="$THIS_DIR/resources/.helptext"
 F_SCORES="$HOME/.snash_scores"
 # fifo array for positions
 declare -a FIFO
+declare -a EN_FIFO
 
 
 ##### ARGUMENT PARSING
@@ -51,6 +59,7 @@ setup_fullscreen() {
 	Y_MAX=$(($(tput lines) - 2)) #16
 	X_MAX=$(($(tput cols)  - 1)) #32
 	POS=$(($Y_MAX / 2 * $X_MAX + $X_MAX / 2))
+	NOO=" "
 	#move cursor to bottom of screen without printing new lines
 	printf "\033[${Y_MAX}B"
 }
@@ -140,11 +149,178 @@ draw() { # $1=position $2=character
 draw_det() { # $1=y $2=x $3=character
 	printf "\033[1D\033[s\033[$1A\033[$2C$2\033[u"
 }
+# check if position belongs to player body/head
+is_on_player() { # $1=position
+	[[ "$1" -eq "$POS" ]] && return 0
+	[[ " ${FIFO[*]} " =~ " ${1} " ]] && return 0
+	return 1
+}
+# check if position is within playable board
+is_inside_board() { # $1=position
+	x=$(pos_to_x "$1")
+	y=$(pos_to_y "$1")
+	(( x >= 1 )) && (( x <= (X_MAX - 1) )) && (( y >= 2 )) && (( y <= (Y_MAX + 1) ))
+}
+# enemy next position for one direction step
+enemy_next_pos() { # $1=position $2=direction
+	case "$2" in
+	w) echo $(($1 + $X_MAX));;
+	a) echo $(($1 - 1));;
+	s) echo $(($1 - $X_MAX));;
+	d) echo $(($1 + 1));;
+	*) echo "$1";;
+	esac
+}
+# wall + own body safety check for enemy
+enemy_move_is_safe() { # $1=old_pos $2=new_pos
+	old_x=$(pos_to_x "$1")
+	old_y=$(pos_to_y "$1")
+	new_x=$(pos_to_x "$2")
+	new_y=$(pos_to_y "$2")
+	if ((new_y < 2)) || ((new_y > (Y_MAX + 1))) || (! ((old_y == new_y)) && ! ((old_x == new_x))) ; then
+		return 1
+	fi
+	[[ " ${EN_FIFO[*]} " =~ " ${2} " ]] && return 1
+	return 0
+}
+# clear enemy drawing/state from board
+clear_enemy() {
+	for seg in "${EN_FIFO[@]}"; do
+		draw "$seg" "${NOO}"
+	done
+	EN_FIFO=()
+	EN_POS=""
+	EN_DIR=""
+}
+# spawn enemy in random valid location with initial size 3
+spawn_enemy() {
+	for _ in $(seq 1 200); do
+		head_x=$((RANDOM % (X_MAX - 1) + 1))
+		head_y=$((RANDOM % Y_MAX + 2))
+		head=$(((head_y - 1) * X_MAX + head_x))
+		case $((RANDOM % 4)) in
+		0) delta=$X_MAX;;
+		1) delta=-1;;
+		2) delta=-$X_MAX;;
+		3) delta=1;;
+		esac
+		candidate=()
+		ok=true
+		for i in $(seq 2 -1 0); do
+			seg=$((head - delta * i))
+			if ! is_inside_board "$seg" || is_on_player "$seg" || [[ " ${candidate[*]} " =~ " ${seg} " ]]; then
+				ok=false
+				break
+			fi
+			candidate+=("$seg")
+		done
+		if $ok; then
+			EN_FIFO=("${candidate[@]}")
+			EN_POS="$head"
+			case "$delta" in
+			$X_MAX) EN_DIR="w";;
+			-$X_MAX) EN_DIR="s";;
+			1) EN_DIR="d";;
+			-1) EN_DIR="a";;
+			esac
+			EN_TARGET_SIZE=3
+			EN_LAST_GROW_TS=$(date +%s)
+			for seg in "${EN_FIFO[@]}"; do
+				draw "$seg" "${BLU}${ENM}"
+			done
+			return
+		fi
+	done
+}
+# remove dead enemy and create a new one
+respawn_enemy() {
+	KILL_COUNT=$((KILL_COUNT + 1))
+	SCORE=$((SCORE + 50))
+	clear_enemy
+	spawn_enemy
+}
+# increase enemy length target every EN_GROWTH_SEC seconds
+update_enemy_growth_target() {
+	now_sec=$(date +%s)
+	if ((EN_LAST_GROW_TS == 0)); then
+		EN_LAST_GROW_TS=$now_sec
+		return
+	fi
+	if ((now_sec - EN_LAST_GROW_TS >= EN_GROWTH_SEC)); then
+		steps=$(((now_sec - EN_LAST_GROW_TS) / EN_GROWTH_SEC))
+		EN_TARGET_SIZE=$((EN_TARGET_SIZE + steps))
+		EN_LAST_GROW_TS=$((EN_LAST_GROW_TS + steps * EN_GROWTH_SEC))
+	fi
+}
+# move enemy one frame using random safe direction preference
+update_enemy() {
+	[[ ${#EN_FIFO[@]} -eq 0 ]] && spawn_enemy
+	[[ ${#EN_FIFO[@]} -eq 0 ]] && return
+
+	update_enemy_growth_target
+	all_dirs=("w" "a" "s" "d")
+	safe_dirs=()
+	safe_not_player=()
+	for d in "${all_dirs[@]}"; do
+		next=$(enemy_next_pos "$EN_POS" "$d")
+		if enemy_move_is_safe "$EN_POS" "$next"; then
+			safe_dirs+=("$d")
+			if ! is_on_player "$next"; then
+				safe_not_player+=("$d")
+			fi
+		fi
+	done
+
+	if [[ ${#safe_not_player[@]} -gt 0 ]]; then
+		pool=("${safe_not_player[@]}")
+		if [[ -n "$EN_DIR" ]]; then
+			for d in "${safe_not_player[@]}"; do
+				if [[ "$d" == "$EN_DIR" ]]; then
+					# Add extra weight to keep moving straight when safe.
+					pool+=("$d" "$d" "$d")
+					break
+				fi
+			done
+		fi
+		chosen="${pool[$((RANDOM % ${#pool[@]}))]}"
+	elif [[ ${#safe_dirs[@]} -gt 0 ]]; then
+		pool=("${safe_dirs[@]}")
+		if [[ -n "$EN_DIR" ]]; then
+			for d in "${safe_dirs[@]}"; do
+				if [[ "$d" == "$EN_DIR" ]]; then
+					pool+=("$d" "$d" "$d")
+					break
+				fi
+			done
+		fi
+		chosen="${pool[$((RANDOM % ${#pool[@]}))]}"
+	else
+		chosen="${all_dirs[$((RANDOM % ${#all_dirs[@]}))]}"
+	fi
+
+	next_pos=$(enemy_next_pos "$EN_POS" "$chosen")
+	if ! enemy_move_is_safe "$EN_POS" "$next_pos" || is_on_player "$next_pos"; then
+		respawn_enemy
+		return
+	fi
+
+	EN_FIFO+=("$next_pos")
+	EN_DIR="$chosen"
+	EN_POS="$next_pos"
+	draw "$EN_POS" "${BLU}${ENM}"
+	if [[ ${#EN_FIFO[@]} -gt $EN_TARGET_SIZE ]]; then
+		tail_pos="${EN_FIFO[0]}"
+		EN_FIFO=("${EN_FIFO[@]:1}")
+		draw "$tail_pos" "${NOO}"
+	fi
+}
 # own collision
 # @return 0 if dead, 1 if alive
 player_dead() {
 	#echo "Score: $SCORE -- Death: head ${POS} found in snake ${FIFO[@]}" >log
-	[[ " ${FIFO[*]} " =~ " ${POS} " ]] && return 0 || return 1
+	[[ " ${FIFO[*]} " =~ " ${POS} " ]] && return 0
+	[[ " ${EN_FIFO[*]} " =~ " ${POS} " ]] && return 0
+	return 1
 }
 # keyboard input to player direction
 update_pos() { # $1 = user input
@@ -195,7 +371,7 @@ update_apple() { # $1=current_frame
 	APP_SPAWN_X=$((RANDOM % (X_MAX - 1) + 1))
 	APP_SPAWN_Y=$((RANDOM % Y_MAX + 2))
 	APP=$(((APP_SPAWN_Y - 1) * X_MAX + APP_SPAWN_X))
-	if [[ " ${FIFO[*]} " =~ " ${APP} " ]]; then
+	if [[ " ${FIFO[*]} " =~ " ${APP} " ]] || [[ " ${EN_FIFO[*]} " =~ " ${APP} " ]]; then
 		APP=""
 	else
 		draw $APP "${GRN}${APL}"
@@ -251,6 +427,7 @@ startup() {
     DIR='w'
 	# finally, draw gamepanel only if inital board is enabled
 	if ! $DRAW_INITIAL_BOARD; then
+		spawn_enemy
 		# move cursor to bottom of screen
 		printf "\033[${Y_MAX}B"
 		return
@@ -262,6 +439,7 @@ startup() {
     	done
     	echo " ${line} "
 	done
+	spawn_enemy
 }
 # calculates and loads one frame
 # @return 0 if dead, 1 if alive after frame
@@ -269,7 +447,7 @@ loadframe() {
 	printf "\033[1D"
     # print debug info"
     printf "\033[1A\033[K"
-    echo "frame=$var, input=$input, DIR=$DIR, SCORE=$SCORE"
+    echo "frame=$var, input=$input, DIR=$DIR, SCORE=$SCORE, KILLS=$KILL_COUNT"
 	# frame
     printf "\033[s"
     update_pos
@@ -277,6 +455,7 @@ loadframe() {
          return 0
 	fi
     update_player
+	update_enemy
     update_apple "$var"
     printf "\033[u"
     # catch user input
@@ -306,7 +485,5 @@ while true; do
 	var=$((var + 1))
 done
 # game ending
-stop_game "Game Over (don't eat yourself)"
-
-
+stop_game "Game Over (collision)"
 

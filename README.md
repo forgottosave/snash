@@ -1,3 +1,8 @@
+# This is the AI-Feature Branch!!
+**The features added here are only short-time AI-slop features... which still are rather cool for the game, but not part of the original project, which was a learning project!**
+
+---
+
 <!-- ![image](https://user-images.githubusercontent.com/88790311/209857426-c4af40b6-f6e4-4148-89a0-8e019f0ed1e5.png) -->
 <img width="460" height="136" alt="image" src="https://github.com/user-attachments/assets/68d60e2a-7a58-4e44-93eb-b920357cf429" />
 
