@@ -1,18 +1,25 @@
-                SNASH
-            snake in bash
+\033[1;36m_SNASH_______\033[0m
+\033[2msnake in bash \033[0m
 
-           # Snash rules #
-          goal: high score
-apples: eat apples to raise your score
-    but be careful, they can rot
-       and result minus points
-control: change direction with w,a,s,d
-  death: eating yourself, or a wall
+\033[1;36m_Gameplay\033[0m
+  Goal: Reach the highest score possible.
+  Apples: Eat apples for points, but be aware: Leaving them out too long will let them rot and disappear, subtracting points!
+  Controls: Move with \033[1mw\033[0m \033[1ma\033[0m \033[1ms\033[0m \033[1md\033[0m (or \033[1mh\033[0m \033[1mj\033[0m \033[1mk\033[0m \033[1ml\033[0m).
+  Death: Hitting a wall or your own body.
 
-Define difficulty: (default = Medium)
+\033[1;36m_Usage\033[0m
+  $0 [options]
 
-Default: $0 -d <number >= 0>
-Easy:    $0 -easy
-Medium:  $0 -medium
-Hard:    $0 -hard
+\033[1;36m_Arguments\033[0m
+  \033[1m-h\033[0m, \033[1m--help\033[0m          Show this help text.
+  \033[1m-v\033[0m, \033[1m--version\033[0m       Show game version.
+  \033[1m-s\033[0m, \033[1m--scores\033[0m        Show local score history.
+  \033[1m-f\033[0m, \033[1m--fullscreen\033[0m    Use terminal size for playfield.
+  \033[1m-t\033[0m, \033[1m--in-terminal\033[0m   Fullscreen without initial board rendering.
+
+\033[1;36m_Difficulty\033[0m
+  \033[1m-medium\033[0m                Medium mode (default).
+  \033[1m-easy\033[0m                  Easy mode.
+  \033[1m-hard\033[0m                  Hard mode.
+  \033[1m-d <number>=0\033[0m          Custom difficulty value.
 

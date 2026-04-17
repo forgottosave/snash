@@ -49,8 +49,9 @@ declare -a FIFO
 ##### ARGUMENT PARSING
 case $1 in
 -h|--help)
-	cat $F_HELPTEXT
-    exit 0
+	printf "%b" "$(cat "$F_HELPTEXT")"
+    echo ""
+	exit 0
 ;;
 -v|--version)
 	echo "snash v1.2"
@@ -67,7 +68,7 @@ case $1 in
 	#move cursor to bottom of screen without printing new lines
 	printf "\033[${Y_MAX}B"
 ;;
--i|--no-gamepanel)
+-t|--in-terminal)
 	DRAW_INITIAL_BOARD=false
 	# and fullscreen
 	Y_MAX=$(($(tput lines) - 2))
