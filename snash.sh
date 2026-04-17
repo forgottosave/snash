@@ -13,7 +13,7 @@
 
 ##### GLOBAL VARs
 # game fixed
-SPF=130 # milliseconds per frame
+SPF=160 # milliseconds per frame
 Y_MAX=16
 X_MAX=32
 MODE=5
@@ -51,6 +51,10 @@ case $1 in
 	cat $F_HELPTEXT
     exit 0
 ;;
+-v|--version)
+	echo "snash v1.2"
+    exit 0
+;;
 -s|--scores)
 	cat .scores
 	exit 0
@@ -64,7 +68,7 @@ case $1 in
 	MODE='EASY   (0) '
     SPF=200
     INIT_SIZE=2
-    APL_MUNUS=0
+    APL_MINUS=0
 ;;
 -medium) #Default difficulty
     MODE='MEDIUM (5) '
@@ -169,7 +173,9 @@ update_apple() { # $1=current_frame
 	fi
 	# spawn apple
 	ACN=0
-	APP=$((($RANDOM % ($X_MAX * $Y_MAX)) + $X_MAX + 1))
+	APP_SPAWN_X=$((RANDOM % (X_MAX - 1) + 1))
+	APP_SPAWN_Y=$((RANDOM % Y_MAX + 2))
+	APP=$(((APP_SPAWN_Y - 1) * X_MAX + APP_SPAWN_X))
 	if [[ " ${FIFO[*]} " =~ " ${APP} " ]]; then
 		APP=""
 	else
@@ -189,7 +195,7 @@ pos_to_y() {
 # increase player score
 increase_score()  {
 	SCORE=$(($SCORE + $APL_PLUS))
-	SPF=$(($SPF - 1))
+	#SPF=$(($SPF - 1))
 }
 # updates player for next frame
 update_player() {
