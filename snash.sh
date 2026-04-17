@@ -41,82 +41,88 @@ APL="O"
 THIS_DIR=$(dirname "$0")
 F_STARTFRAMES="$THIS_DIR/resources/.startupframes"
 F_HELPTEXT="$THIS_DIR/resources/.helptext"
-F_SCORES="$THIS_DIR/.scores"
+F_SCORES="$HOME/.snash_scores"
 # fifo array for positions
 declare -a FIFO
 
 
 ##### ARGUMENT PARSING
-case $1 in
--h|--help)
-	printf "%b" "$(cat "$F_HELPTEXT")"
-    echo ""
-	exit 0
-;;
--v|--version)
-	echo "snash v1.2"
-    exit 0
-;;
--s|--scores)
-	cat .scores
-	exit 0
-;;
--f|--fullscreen)
+setup_fullscreen() {
 	Y_MAX=$(($(tput lines) - 2)) #16
 	X_MAX=$(($(tput cols)  - 1)) #32
 	POS=$(($Y_MAX / 2 * $X_MAX + $X_MAX / 2))
 	#move cursor to bottom of screen without printing new lines
 	printf "\033[${Y_MAX}B"
-;;
--t|--in-terminal)
-	DRAW_INITIAL_BOARD=false
-	# and fullscreen
-	Y_MAX=$(($(tput lines) - 2))
-	X_MAX=$(($(tput cols)  - 1))
-	POS=$(($Y_MAX / 2 * $X_MAX + $X_MAX / 2))
-	#move cursor to bottom of screen without printing new lines
-	printf "\033[${Y_MAX}B"
-;;
--easy)
-	MODE='EASY   (0) '
-    SPF=200
-    INIT_SIZE=2
-    APL_MINUS=0
-;;
--medium) #Default difficulty
-    MODE='MEDIUM (5) '
-	SPF=130
-    INIT_SIZE=3
-    APL_MINUS=-10
-;;
--hard)
-	MODE='HARD  (10) '
-    SPF=90
-    INIT_SIZE=4
-    APL_MINUS=-20
-;;
--d)
-	# change game difficulty
-	MODE="$2"
-	SPF=200
-	INIT_SIZE=2
-	APL_MINUS=0
-	[[ $2 -le 0 ]] && break;
-	SPF=$((2 * "$SPF" / "$MODE" + 50))
-	[[ $SPF -le 10 ]] && SPF=10
-	[[ $SPF -ge 200 ]] && SPF=200
-	INIT_SIZE=$(("$MODE" / 4 + "$INIT_SIZE"))
-	APL_MINUS=$(("$APL_MINUS" - "$MODE" * 2))
-;;
-esac
+}
+
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+	-h|--help)
+		printf "%b" "$(cat "$F_HELPTEXT")"
+	    echo ""
+		exit 0
+	;;
+	-v|--version)
+		echo "snash v1.2"
+	    exit 0
+	;;
+	-s|--scores)
+	    cat "$F_SCORES"
+		exit 0
+	;;
+	-f|--fullscreen)
+		setup_fullscreen
+	;;
+	-t|--in-terminal)
+		DRAW_INITIAL_BOARD=false
+		setup_fullscreen
+	;;
+	-easy)
+		MODE='EASY   (0) '
+	    SPF=200
+	    INIT_SIZE=2
+	    APL_MINUS=0
+	;;
+	-medium) #Default difficulty
+	    MODE='MEDIUM (5) '
+		SPF=130
+	    INIT_SIZE=3
+	    APL_MINUS=-10
+	;;
+	-hard)
+		MODE='HARD  (10) '
+	    SPF=90
+	    INIT_SIZE=4
+	    APL_MINUS=-20
+	;;
+	-d)
+		shift
+		if ! [[ $1 =~ ^[0-9]+$ ]] || [[ $1 -le 0 ]]; then
+			echo "Difficulty must be a positive number."
+			exit 1
+		fi
+		# change game difficulty
+		MODE="$1"
+		SPF=200
+		INIT_SIZE=2
+		APL_MINUS=0
+		SPF=$((2 * "$SPF" / "$MODE" + 50))
+		[[ $SPF -le 10 ]] && SPF=10
+		[[ $SPF -ge 200 ]] && SPF=200
+		INIT_SIZE=$(("$MODE" / 4 + "$INIT_SIZE"))
+		APL_MINUS=$(("$APL_MINUS" - "$MODE" * 2))
+	;;
+	esac
+	shift
+done # while
 
 
 ##### METHODS
 # game end
 stop_game() { # $1=end_string
 	printf "\033[5D\033[s\033[1A\033[K$1  Score: $SCORE\033[u"
-	touch $F_SCORES
-	echo "$MODE // Death: $1 // Score: $SCORE" >> .scores
+	touch "$F_SCORES"
+	echo "$MODE // Death: $1 // Score: $SCORE" >> $F_SCORES
 	exit 0
 }
 # define interrupt action
