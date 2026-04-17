@@ -16,6 +16,7 @@
 SPF=160 # milliseconds per frame
 Y_MAX=16
 X_MAX=32
+DRAW_INITIAL_BOARD=true
 MODE=5
 INIT_SIZE=3 # initial snake size
 APL_PLUS=10
@@ -63,6 +64,17 @@ case $1 in
 	Y_MAX=$(($(tput lines) - 2)) #16
 	X_MAX=$(($(tput cols)  - 1)) #32
 	POS=$(($Y_MAX / 2 * $X_MAX + $X_MAX / 2))
+	#move cursor to bottom of screen without printing new lines
+	printf "\033[${Y_MAX}B"
+;;
+-i|--no-gamepanel)
+	DRAW_INITIAL_BOARD=false
+	# and fullscreen
+	Y_MAX=$(($(tput lines) - 2))
+	X_MAX=$(($(tput cols)  - 1))
+	POS=$(($Y_MAX / 2 * $X_MAX + $X_MAX / 2))
+	#move cursor to bottom of screen without printing new lines
+	printf "\033[${Y_MAX}B"
 ;;
 -easy)
 	MODE='EASY   (0) '
@@ -230,7 +242,12 @@ startup() {
     read -n 1 input
 	printf "\033[1D\033[1A"
     DIR='w'
-	# draw gamepanel & start
+	# finally, draw gamepanel only if inital board is enabled
+	if ! $DRAW_INITIAL_BOARD; then
+		# move cursor to bottom of screen
+		printf "\033[${Y_MAX}B"
+		return
+	fi
 	for row in $(seq 0 $Y_MAX); do
     	line=""
     	for col in $(seq 0 $(($X_MAX - 2))); do
