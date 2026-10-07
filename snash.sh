@@ -59,6 +59,32 @@ setup_fullscreen() {
 	#move cursor to bottom of screen without printing new lines
 	printf "\033[${Y_MAX}B"
 }
+# pretty-print best score, longest snake and the last 5 runs
+# this method is AI-generated because... yeah
+show_scores() {
+	if [[ ! -s "$F_SCORES" ]]; then
+		echo "No scores yet. Go play!"
+		return
+	fi
+	awk -F' // ' -v G="$GRN" -v Y="$YLW" -v N='\033[0m' '
+	{
+		s = $2; sub(/^Score: /, "", s);  s += 0
+		l = $3; sub(/^Length: /, "", l); l += 0
+		m = $4; sub(/^Mode: /, "", m);   gsub(/ +$/, "", m)
+		d = $5; sub(/^Death: /, "", d)
+		row[NR] = sprintf("%-4s %7d  %6d  %s", $1, s, l, d)
+		if (NR == 1 || s > bs) { bs = s; bsi = NR }
+		if (NR == 1 || l > bl) { bl = l; bli = NR }
+	}
+	END {
+		hdr = sprintf("%-4s %7s  %6s  %s", "Ver", "Score", "Length", "Death")
+		print G "=== SNASH SCORES ===" N "\n"
+		print Y "Highest score" N;  print "  " hdr; print "  " row[bsi] "\n"
+		print Y "Longest snake" N;  print "  " hdr; print "  " row[bli] "\n"
+		print Y "Last 5 runs (newest first)" N; print "  " hdr
+		for (i = NR; i > NR - 5 && i >= 1; i--) print "  " row[i]
+	}' "$F_SCORES" | printf "%b\n" "$(cat)"
+}
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
@@ -72,27 +98,30 @@ while [[ $# -gt 0 ]]; do
 	    exit 0
 	;;
 	-s|--scores)
-	    cat "$F_SCORES"
+	    #cat "$F_SCORES"
+	    show_scores
 		exit 0
 	;;
 	-f|--fullscreen)
+		MODE='FULLSCREEN'
 		setup_fullscreen
 	;;
 	-t|--in-terminal)
+		MODE='IN TERMINAL'
 		DRAW_INITIAL_BOARD=false
 		setup_fullscreen
 	;;
 	-easy)
-		MODE='EASY   (0) '
+		MODE='EASY (0)   '
 	    SPF=200
 	    INIT_SIZE=2
 	    APL_MINUS=0
 	;;
 	-medium) #Default difficulty
-	    MODE='MEDIUM (5) '
+	    #MODE='MEDIUM (5) '
 	;;
 	-hard)
-		MODE='HARD  (10) '
+		MODE='HARD (10)  '
 	    SPF=100
 	    INIT_SIZE=4
 	    APL_MINUS=-40
@@ -222,9 +251,9 @@ increase_score()  {
 		LEVEL=$(($LEVEL + 1))
 		NEXT_LEVEL=$(($NEXT_LEVEL + 1000))
 		# level effects (more speed and more bad-apple-penalty)
-		SPF=$(($SPF - 5))
+		SPF=$(($SPF - 4))
 		[[ $SPF -le 10 ]] && SPF=10 # keep the same lower bound as -d
-		APL_MINUS=$(($APL_MINUS * $LEVEL))
+		APL_MINUS=$((-10 * $LEVEL))
 		# set how long level up text should be shown
 		LEVEL_MSG_UNTIL=$(($(date +%s%N) + 6000000000))
 	done
