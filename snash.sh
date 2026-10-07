@@ -12,6 +12,7 @@
 #!/bin/bash
 
 ##### GLOBAL VARs
+VERSION=1.3
 # game fixed
 SPF=160 # milliseconds per frame
 Y_MAX=16
@@ -44,6 +45,7 @@ F_HELPTEXT="$THIS_DIR/resources/.helptext"
 F_SCORES="$HOME/.snash_scores"
 # fifo array for positions
 declare -a FIFO
+declare -a DIG # countdowns (in frames) for apples still being digested
 
 
 ##### ARGUMENT PARSING
@@ -63,7 +65,7 @@ while [[ $# -gt 0 ]]; do
 		exit 0
 	;;
 	-v|--version)
-		echo "snash v1.2"
+		echo "snash v$VERSION"
 	    exit 0
 	;;
 	-s|--scores)
@@ -120,9 +122,12 @@ done # while
 ##### METHODS
 # game end
 stop_game() { # $1=end_string
-	printf "\033[5D\033[s\033[1A\033[K$1  Score: $SCORE\033[u"
+	printf "\r\033[K"
+	printf "\033[5D\033[s\033[1A\033[K$1\n"
+	printf "Scored ${GRN}<<<\033[0m $SCORE ${GRN}>>>\033[0m\n"
+	printf "and reached length: ${#FIFO[@]}\n"
 	touch "$F_SCORES"
-	echo "$MODE // Death: $1 // Score: $SCORE" >> $F_SCORES
+	echo "$VERSION // Score: $SCORE // Length: ${#FIFO[@]} // Mode: $MODE // Death: $1" >> $F_SCORES
 	exit 0
 }
 # define interrupt action
@@ -213,20 +218,38 @@ pos_to_y() {
 }
 # increase player score
 increase_score()  {
-	SCORE=$(($SCORE + $APL_PLUS))
+	SCORE=$(($SCORE + $APL_PLUS * (${#DIG[@]} + 1))) # multi-apple digest = more points :)
+	#SCORE=$(($SCORE + $APL_PLUS))
 	#SPF=$(($SPF - 1))
+}
+# show combo text on the line below the board
+show_combo() {
+	printf "\r\033[K" # clear the line
+	if ((${#DIG[@]} > 1)); then
+		printf "      ${YLW}<< %dx combo >>\033[0m" "${#DIG[@]}"
+	fi
 }
 # updates player for next frame
 update_player() {
+	# tick digestion timers, drop apples that reached the tail
+	local alive=()
+	for t in "${DIG[@]}"; do
+		(( t > 1 )) && alive+=($((t - 1)))
+	done
+	DIG=("${alive[@]}")
 	# check for apple
 	if [[ "$APP" -eq "$POS" ]]; then
 		APP=""
 		FIFO+=("$POS")
 		increase_score
+		DIG+=("${#FIFO[@]}") # this apple needs ~length frames to reach the tail
+		draw $POS "${BLU}${PLR}"
+	else
+		draw $POS "${GRN}${PLR}"
 	fi
 	# push new pos
-    FIFO+=("$POS")
-	draw $POS "${GRN}${PLR}"
+	FIFO+=("$POS")
+	#draw $POS "${GRN}${PLR}"
 	# pop tail
 	tail_pos=${FIFO[0]}
 	FIFO=("${FIFO[@]:1}")
@@ -269,7 +292,8 @@ loadframe() {
 	printf "\033[1D"
     # print debug info"
     printf "\033[1A\033[K"
-    echo "frame=$var, input=$input, DIR=$DIR, SCORE=$SCORE"
+    echo -e "${GRN} <<<  \033[0m${SCORE}${GRN}  >>>\033[0m"
+    #echo "frame=$var, input=$input, DIR=$DIR, SCORE=$SCORE"
 	# frame
     printf "\033[s"
     update_pos
@@ -278,6 +302,7 @@ loadframe() {
 	fi
     update_player
     update_apple "$var"
+    show_combo
     printf "\033[u"
     # catch user input
     read -n 1 -s -t .02 input
