@@ -12,9 +12,9 @@
 #!/bin/bash
 
 ##### GLOBAL VARs
-VERSION=1.3
+VERSION=1.4
 # game fixed
-SPF=160 # milliseconds per frame
+SPF=170 # milliseconds per frame
 Y_MAX=16
 X_MAX=32
 DRAW_INITIAL_BOARD=true
@@ -29,6 +29,9 @@ APP="" # apple position
 ACN=0 # apple existing counter
 ARR=1 # apple respawn rate (value>=1, 1=highest)
 SCORE=0 # game score
+LEVEL=1 # current level
+NEXT_LEVEL=1000 # score needed for next level up
+LEVEL_MSG_UNTIL=0 # timestamp (ns) until which the level-up message is shown
 # colors
 RED='\033[0;31m'
 GRN='\033[0;32m'
@@ -87,15 +90,12 @@ while [[ $# -gt 0 ]]; do
 	;;
 	-medium) #Default difficulty
 	    MODE='MEDIUM (5) '
-		SPF=130
-	    INIT_SIZE=3
-	    APL_MINUS=-10
 	;;
 	-hard)
 		MODE='HARD  (10) '
-	    SPF=90
+	    SPF=100
 	    INIT_SIZE=4
-	    APL_MINUS=-20
+	    APL_MINUS=-40
 	;;
 	-d)
 		shift
@@ -190,8 +190,6 @@ update_apple() { # $1=current_frame
 	elif (($ACN > 80)) && ! [[ $APP == "" ]]; then
 		draw $APP "${YLW}${APL}"
 	fi
-	# only spawn every 20th frame and if no other exists
-	#if (($1 % 20)) || ! [[ $APP == "" ]]; then
 	if (($1 % $ARR)) || ! [[ $APP == "" ]]; then
 		return
 	fi
@@ -205,7 +203,6 @@ update_apple() { # $1=current_frame
 	else
 		draw $APP "${GRN}${APL}"
 	fi
-	#draw $APP "${GRN}${APL}"
 }
 # player position
 pos_to_x() {
@@ -220,13 +217,33 @@ pos_to_y() {
 increase_score()  {
 	SCORE=$(($SCORE + $APL_PLUS * (${#DIG[@]} + 1))) # multi-apple digest = more points :)
 	#SCORE=$(($SCORE + $APL_PLUS))
-	#SPF=$(($SPF - 1))
+	# level up every 1000 points
+	while (($SCORE >= $NEXT_LEVEL)); do
+		LEVEL=$(($LEVEL + 1))
+		NEXT_LEVEL=$(($NEXT_LEVEL + 1000))
+		# level effects (more speed and more bad-apple-penalty)
+		SPF=$(($SPF - 5))
+		[[ $SPF -le 10 ]] && SPF=10 # keep the same lower bound as -d
+		APL_MINUS=$(($APL_MINUS * $LEVEL))
+		# set how long level up text should be shown
+		LEVEL_MSG_UNTIL=$(($(date +%s%N) + 6000000000))
+	done
 }
-# show combo text on the line below the board
+# show level-up / combo text on the line below the board
 show_combo() {
 	printf "\r\033[K" # clear the line
 	if ((${#DIG[@]} > 1)); then
 		printf "      ${YLW}<< %dx combo >>\033[0m" "${#DIG[@]}"
+		printf "\033[u"
+	fi
+	# check if level text should be shown
+	local now
+	now=$(date +%s%N)
+	if (((now / 800000000) % 2 == 0)); then
+	if (($(date +%s%N) < LEVEL_MSG_UNTIL)); then
+		printf "\r\033[K"
+		printf "      ${YLW}*** LEVEL UP! - LEVEL %d ***\033[0m" "$LEVEL"
+	fi
 	fi
 }
 # updates player for next frame
@@ -290,7 +307,7 @@ startup() {
 # @return 0 if dead, 1 if alive after frame
 loadframe() {
 	printf "\033[1D"
-    # print debug info"
+    # print score
     printf "\033[1A\033[K"
     echo -e "${GRN} <<<  \033[0m${SCORE}${GRN}  >>>\033[0m"
     #echo "frame=$var, input=$input, DIR=$DIR, SCORE=$SCORE"
