@@ -59,7 +59,7 @@ setup_fullscreen() {
 	#move cursor to bottom of screen without printing new lines
 	printf "\033[${Y_MAX}B"
 }
-# pretty-print best score, longest snake and the last 5 runs
+# pretty-print top 3 scores, top 3 longest snakes and the last 5 runs
 # this method is AI-generated because... yeah
 show_scores() {
 	if [[ ! -s "$F_SCORES" ]]; then
@@ -67,20 +67,42 @@ show_scores() {
 		return
 	fi
 	awk -F' // ' -v G="$GRN" -v Y="$YLW" -v N='\033[0m' '
+	# print the rows of the top-k entries of arr[1..n], best first
+	# (ties: the earlier run wins)
+	function top(arr, n, k,    used, i, j, best) {
+		split("", used)
+		for (j = 1; j <= k && j <= n; j++) {
+			best = 0
+			for (i = 1; i <= n; i++)
+				if (!(i in used) && (best == 0 || arr[i] > arr[best])) best = i
+			used[best] = 1
+			print "  " row[best]
+		}
+	}
 	{
 		s = $2; sub(/^Score: /, "", s);  s += 0
 		l = $3; sub(/^Length: /, "", l); l += 0
 		m = $4; sub(/^Mode: /, "", m);   gsub(/ +$/, "", m)
 		d = $5; sub(/^Death: /, "", d)
-		row[NR] = sprintf("%-4s %7d  %6d  %s", $1, s, l, d)
-		if (NR == 1 || s > bs) { bs = s; bsi = NR }
-		if (NR == 1 || l > bl) { bl = l; bli = NR }
+		# date is missing in entries written by older versions
+		dt = (NF >= 6) ? $6 : ""
+		sub(/^Date: /, "", dt); gsub(/^ +| +$/, "", dt)
+		if (dt == "") dt = "n/a"
+		#row[NR] = sprintf("%-4s %-16s %7d  %6d  %s", $1, dt, s, l, d)
+		#row[NR] = sprintf("%-4s %-14s %7d  %6d", $1, dt, s, l)
+		#row[NR] = sprintf("%-16s %7d  %6d  %s", dt, s, l, $1)
+		row[NR] = sprintf("%5d  %6d  %-16s  %s", s, l, dt, $1)
+		S[NR] = s
+		L[NR] = l
 	}
 	END {
-		hdr = sprintf("%-4s %7s  %6s  %s", "Ver", "Score", "Length", "Death")
+		#hdr = sprintf("%-4s %-14s %7s  %6s  %s", "Ver", "Date", "Score", "Length", "Death")
+		#hdr = sprintf("%-4s %-14s %7s  %6s", "Ver", "Date", "Score", "Length")
+		#hdr = sprintf("%-16s %7s  %6s  %s", "Date", "Score", "Length", "Ver")
+		hdr = sprintf("%5s  %6s  %-16s  %s", "Score", "Length", "Date", "Ver")
 		print G "=== SNASH SCORES ===" N "\n"
-		print Y "Highest score" N;  print "  " hdr; print "  " row[bsi] "\n"
-		print Y "Longest snake" N;  print "  " hdr; print "  " row[bli] "\n"
+		print Y "Top 3 scores" N;         print "  " hdr; top(S, NR, 3); print ""
+		print Y "Top 3 longest snakes" N; print "  " hdr; top(L, NR, 3); print ""
 		print Y "Last 5 runs (newest first)" N; print "  " hdr
 		for (i = NR; i > NR - 5 && i >= 1; i--) print "  " row[i]
 	}' "$F_SCORES" | printf "%b\n" "$(cat)"
@@ -156,7 +178,7 @@ stop_game() { # $1=end_string
 	printf "Scored ${GRN}<<<\033[0m $SCORE ${GRN}>>>\033[0m\n"
 	printf "and reached length: ${#FIFO[@]}\n"
 	touch "$F_SCORES"
-	echo "$VERSION // Score: $SCORE // Length: ${#FIFO[@]} // Mode: $MODE // Death: $1" >> $F_SCORES
+	echo "$VERSION // Score: $SCORE // Length: ${#FIFO[@]} // Mode: $MODE // Death: $1 // Date: $(date '+%Y-%m-%d %H:%M')" >> $F_SCORES
 	exit 0
 }
 # define interrupt action
